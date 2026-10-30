@@ -219,10 +219,48 @@ def parse_csv(df: pd.DataFrame, top_n: int) -> list[dict]:
 
 
 # --- Helper Function: parse PDF (extract word lists from text) -------------- #
-def parse_pdf(file, top_n: int) -> list[dict]:
+def parse_pdf(file, top_n):
     if not PDF_SUPPORT:
-        st.error("pdfplumber is not installed. Run `pip install pdfplumber`.")
+        st.error("pdfplumber is not installed.")
         return []
+    topics = []
+    with pdfplumber.open(file) as pdf:
+        full_text = "\n".join(p.extract_text() or "" for p in pdf.pages)
+
+    # Attempt 1: Standard line-by-line regex
+    pattern_a = re.findall(r"[Tt]opic\s*(\d+)\s*[:\-]+\s*([^\n]+)", full_text)
+    if pattern_a:
+        for tid, words_str in pattern_a:
+            gensim_matches = re.findall(r"[\d.]+\*\"?(\w+)\"?", words_str)
+            if gensim_matches:
+                words = [(w, None) for w in gensim_matches[:top_n]]
+            else:
+                words = [(w.strip().strip('"\,"'), None) for w in re.split(r"[,\s]+", words_str) if w.strip()][:top_n]
+            topics.append({"topic_id": tid, "words": words})
+        return topics
+
+    # Attempt 2: Flexible line-by-line parsing if no hard pattern match found
+    lines = full_text.splitlines()
+    for i, line in enumerate(lines):
+        line = line.strip()
+        if not line:
+            continue
+        m = re.match(r"^[Tt]opic\s*(\d+)\s*[:\-]?\s*", line)
+        if m:
+            tid = m.group(1)
+            rest = line[m.end():]
+        else:
+            # If line contains common stop words, skip
+            if any(term in line.lower() for term in ["results", "table", "page", "index", "author"]):
+                continue
+            tid = str(i)
+            rest = line
+
+        words = [(w.strip().strip('"\,"').lower(), None) for w in re.split(r"[,\s]+", rest) if w.strip()][:top_n]
+        if len(words) > 1:
+            topics.append({"topic_id": tid, "words": words})
+
+    return topics
 
     topics = []
     with pdfplumber.open(file) as pdf:
