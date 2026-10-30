@@ -306,10 +306,8 @@ def parse_pdf(file, top_n):
 
 
 # --- Helper Function: display results --------------------------------------- #
-def display_results(topics: list[dict], model: str, temperature: float, max_tokens: int, frequency_penalty: float, presence_penalty: float, custom_prompt: str, final_prompt: str):
+def display_results(topics, model, temperature, max_tokens, frequency_penalty, presence_penalty, custom_prompt, final_prompt):
     st.subheader("📋 Results")
-
-    # Summary table
     rows = []
     for t in topics:
         rows.append({
@@ -332,8 +330,9 @@ def display_results(topics: list[dict], model: str, temperature: float, max_toke
     metadata_string += "# Final Prompt Sent to OpenAI:\n"
     metadata_string += f"# {final_prompt.replace('\n', '\n# ')}\n"
 
-    # Download
-    csv_content = df_out.to_csv(index=False).encode() + metadata_string.encode()
+    # Convert dataframe to CSV bytes and append metadata
+    csv_content = df_out.to_csv(index=False).encode('utf-8') + metadata_string.encode('utf-8')
+    
     st.download_button(
         "⬇️ Download Results CSV",
         data=csv_content,
@@ -341,30 +340,13 @@ def display_results(topics: list[dict], model: str, temperature: float, max_toke
         mime="text/csv",
     )
 
-    # Expandable detail cards
-    st.subheader("🔍Topic Details")
+    # Interactive expander details per topic
+    st.subheader("🔍 Topic Details")
     for t in topics:
         with st.expander(f"Topic {t['topic_id']} — {t.get('label', '')}"):
             st.markdown(f"**Description:** {t.get('description', '—')}")
-            if t["words"] and t["words"][0][1] is not None:
-                word_df = pd.DataFrame(t["words"], columns=["Word", "Weight"])
-                st.dataframe(word_df, use_container_width=True, hide_index=True)
-            else:
-                st.write(", ".join(w for w, _ in t["words"]))
+            st.write(", ".join(w for w, _ in t["words"]))
 
-    st.subheader("⚙️ Parameters and Prompt Used")
-    st.markdown(f"**Model:** `{model}`")
-    st.markdown(f"**Temperature:** `{temperature}`")
-    st.markdown(f"**Max Tokens:** `{max_tokens}`")
-    st.markdown(f"**Frequency Penalty:** `{frequency_penalty}`")
-    st.markdown(f"**Presence Penalty:** `{presence_penalty}`")
-    st.markdown("**Custom Prompt Used:**")
-    st.code(custom_prompt if custom_prompt else "(Default Prompt)", language="markdown")
-    st.markdown("**Final Prompt Sent to OpenAI:**")
-    st.code(final_prompt, language="markdown")
-
-
-# --- Input tabs ------------------------------------------------------------- #
 tab_csv, tab_pdf, tab_manual = st.tabs(["📄 CSV Upload", "📑 PDF Upload", "🪶 Manual Entry"])
 
 topics_parsed: list[dict] = []
