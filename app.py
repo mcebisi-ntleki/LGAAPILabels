@@ -257,7 +257,7 @@ def parse_pdf(file, top_n: int) -> list[dict]:
             return topics_from_csv_in_pdf
     except Exception as e:
         # Log the error for debugging, but don't show to user unless all else fails
-        # st.warning(f"Could not parse PDF content as CSV: {e}") # Optionally uncomment for more verbose debugging
+        st.warning(f"Could not parse PDF content as CSV: {e}") # Optionally uncomment for more verbose debugging
         pass # Continue to final warning if both failed
 
     st.warning(
